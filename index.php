@@ -13,14 +13,23 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
     $password = $_POST['password'];
 
     $sql = "SELECT * FROM user WHERE username = ? AND password = ?";
-    $result = $pdo->prepare($sql);
-    $result->execute([$username, $password]);
-    $user = $result->fetch();
+    if ($sql){
+
+        $result = $pdo->prepare($sql);
+        $result->execute([$username, $password]);
+        $user = $result->fetch();
+
+    } else {
+
+        echo "<script type='text/javascript'>alert('Error: SQL not found. Please retry');</script>";
+
+    }
 
     // Controleer of er een rij is gevonden
     if($result->rowCount() > 0) {
         // Gebruiker is ingelogd
         $_SESSION['loggedin'] = true;
+        $_SESSION['id'] = $user['id'];
         $_SESSION['username'] = $username;
         $_SESSION['user'] = $user;
 
