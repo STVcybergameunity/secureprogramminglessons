@@ -3,20 +3,27 @@ session_start();
 include 'includes/db.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
-    $passwordcheck = $_POST['passwordcheck'];
+
+    $username = htmlspecialchars($_POST['username'], ENT_QUOTES);
+    $password = htmlspecialchars($_POST['password'], ENT_QUOTES);
+    $passwordcheck = htmlspecialchars($_POST['passwordcheck'], ENT_QUOTES);
 
     if ($password == $passwordcheck) {
         $stmt = $pdo->prepare("SELECT * FROM user WHERE username = ?");
         $stmt->execute([$username]);
-        if ($stmt->rowCount() == 0) {
-            $stmt = $pdo->prepare("INSERT INTO user (username, password, balance, isAdmin) VALUES (?, ?, 100, 0)");
-            $stmt->execute([$username, $password]);
-            $success = "Je account is aangemaakt, je kunt nu inloggen";
-        } else {
-            $error = "Deze gebruikersnaam is al in gebruik";
+        try {
+            if ($stmt->rowCount() == 0) {
+                $stmt = $pdo->prepare("INSERT INTO user (username, password, balance, isAdmin) VALUES (?, ?, 100, 0)");
+                $stmt->execute([$username, $password]);
+                $success = "Je account is aangemaakt, je kunt nu inloggen";
+            } else {
+                $error = "Deze gebruikersnaam is al in gebruik";
+            }
+
+        } catch (Exception $e) {
+            echo '<script>alert("Message: ' . $e->getMessage() . '");</script>';
         }
+        
     } else {
         $error = "De wachtwoorden komen niet overeen";
     }

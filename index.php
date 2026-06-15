@@ -14,7 +14,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $sql = "SELECT * FROM user WHERE username = ? AND password = ?";
     if ($sql){
-
+  
         $result = $pdo->prepare($sql);
         $result->execute([$username, $password]);
         $user = $result->fetch();
