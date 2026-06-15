@@ -1,6 +1,63 @@
 <?php
 session_start();
-include 'includes/db.php';
+include_once 'includes/db.php';
+$error = '';
+$success = '';
+
+function executeTransaction($ontvanger, $bedrag): void
+{
+    global $error, $success, $pdo;
+
+    // Controleer of de ontvanger bestaat
+    $stmt = $pdo->prepare("SELECT * FROM user WHERE username = ?");
+    $stmt->execute([$ontvanger]);
+    $ontvanger = $stmt->fetch();
+
+    if($stmt->rowCount() <= 0) {
+        $error = "Deze gebruiker bestaat niet";
+        return;
+    }
+
+    if($bedrag <= 0) {
+        $error = "Vul een bedrag hoger dan 0 in";
+        return;
+    }
+
+    if($_SESSION['user']['balance'] < $bedrag) {
+        $error = "Je hebt niet genoeg saldo om dit bedrag over te maken";
+        return;
+    }
+
+    // Zet de transactie in de database
+    $stmt = $pdo->prepare("INSERT INTO transaction (sender, receiver, amount, description) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$_SESSION['user']['id'], $ontvanger['id'], $bedrag, htmlspecialchars($_POST['omschrijving'], ENT_QUOTES)]);
+
+    // Haal het saldo van de ontvanger op
+    $stmt = $pdo->prepare("SELECT balance FROM user WHERE username = ?");
+    $stmt->execute([$ontvanger['username']]);
+    $saldo = $stmt->fetchColumn();
+
+    // Bereken het nieuwe saldo van de ontvanger
+    $saldo = $saldo + $bedrag;
+
+    // Update het saldo van de ontvanger
+    $stmt = $pdo->prepare("UPDATE user SET balance = ? WHERE username = ?");
+    $stmt->execute([$saldo, $ontvanger['username']]);
+
+    // Bereken het nieuwe saldo van de ingelogde gebruiker
+    $stmt = $pdo->prepare("SELECT balance FROM user WHERE id = ?");
+    $stmt->execute([$_SESSION['user']['id']]);
+
+    //Bereken het nieuwe saldo van de ingelogde gebruiker
+    $saldo = $stmt->fetchColumn();
+    $saldo = $saldo - $bedrag;
+
+    // Update het saldo van de ingelogde gebruiker
+    $stmt = $pdo->prepare("UPDATE user SET balance = ? WHERE id = ?");
+    $stmt->execute([$saldo, $_SESSION['user']['id']]);
+
+    $success = "Het bedrag is succesvol overgemaakt";
+}
 
 if(!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true){
     header("location: index.php");
@@ -12,55 +69,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     $ontvanger = htmlspecialchars($_POST['ontvanger'], ENT_QUOTES);
     $bedrag = htmlspecialchars($_POST['bedrag'], ENT_QUOTES);
 
-    // Controleer of de ontvanger bestaat
-    $stmt = $pdo->prepare("SELECT * FROM user WHERE username = ?");
-    $stmt->execute([$ontvanger]);
-    $ontvanger = $stmt->fetch();
-
-    if($stmt->rowCount() == 1) {
-        // Controleer of de gebruiker genoeg saldo heeft
-        if($_SESSION['user']['balance'] >= $bedrag && $bedrag > 0) {
-            // Zet de transactie in de database
-            $stmt = $pdo->prepare("INSERT INTO transaction (sender, receiver, amount, description) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$_SESSION['user']['id'], $ontvanger['id'], $bedrag, htmlspecialchars($_POST['omschrijving'], ENT_QUOTES)]);
-
-            // Haal het saldo van de ontvanger op
-            $stmt = $pdo->prepare("SELECT balance FROM user WHERE username = ?");
-            $stmt->execute([$ontvanger['username']]);
-            $saldo = $stmt->fetchColumn();
-
-            // Bereken het nieuwe saldo van de ontvanger
-            $saldo = $saldo + $bedrag;
-
-            // Update het saldo van de ontvanger
-            $stmt = $pdo->prepare("UPDATE user SET balance = ? WHERE username = ?");
-            $stmt->execute([$saldo, $ontvanger['username']]);
-
-            // Bereken het nieuwe saldo van de ingelogde gebruiker
-            $stmt = $pdo->prepare("SELECT balance FROM user WHERE id = ?");
-            $stmt->execute([$_SESSION['user']['id']]);
-
-           //Bereken het nieuwe saldo van de ingelogde gebruiker
-            $saldo = $stmt->fetchColumn();
-            $saldo = $saldo - $bedrag;
-
-            // Update het saldo van de ingelogde gebruiker
-            $stmt = $pdo->prepare("UPDATE user SET balance = ? WHERE id = ?");
-            $stmt->execute([$saldo, $_SESSION['user']['id']]);
-
-            $success = "Het bedrag is succesvol overgemaakt";
-        } else if($bedrag <= 0) {
-            $error = "Vul een getal hoger dan 0 in";
-        } else {
-            $error = "Je hebt niet genoeg saldo om dit bedrag over te maken";
-        }
-    } else {
-        $error = "Deze gebruiker bestaat niet";
-    }
-
+    executeTransaction($ontvanger, $bedrag);
 }
-
-include 'includes/db.php';
 
 // Haal het saldo van de ingelogde gebruiker op
 $stmt = $pdo->prepare("SELECT balance FROM user WHERE id = ?");
@@ -120,10 +130,9 @@ $saldo = $stmt->fetchColumn();
                         </div>
                         <input type="submit" value="Overmaken" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 focus:outline-none focus:shadow-outline">
                         <?php
-                            if(isset($error)) {
+                            if(!empty($error)) {
                                 echo '<p class="text-red-500 text-sm mt-2">' . $error . '</p>';
-                            }
-                            if(isset($success)) {
+                            } else {
                                 echo '<p class="text-green-500 text-sm mt-2">' . $success . '</p>';
                             }
                         ?>
