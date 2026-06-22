@@ -6,11 +6,48 @@ include 'includes/db.php';
 include 'includes/userTable.php';
 include 'includes/transactionTable.php';
 
+
+if (isset($_SESSION['isBlocked']) && $_SESSION['isBlocked'] === true) {
+
+    $currentTime = time();
+    $blockTime = $_SESSION['blockStartedAt'] ?? 0;
+
+    $expiryTime = 300;
+
+    if (($currentTime - $blockTime) >= $expiryTime) {
+        $_SESSION['isBlocked'] = false;
+        unset($_SESSION['blockStartedAt']);
+        $_SESSION['mistakes'] = 0;
+    }
+
+}
+
+if ($_SESSION['isBlocked'] ?? false) {
+
+    // Bereken resterende blocktijd (in seconden)
+    $currentTime = time();
+    $blockStartedAt = $_SESSION['blockStartedAt'] ?? 0;
+    $expiryTime = 300; // seconden
+    $remaining = ($blockStartedAt + $expiryTime) - $currentTime;
+    if ($remaining < 0) {
+        $remaining = 0;
+    }
+
+    $minutes = floor($remaining / 60);
+    $seconds = $remaining % 60;
+    $error = "Je bent geblockeerd. Time remaining " . str_pad($minutes, 2, "0", STR_PAD_LEFT) . ":" . str_pad($seconds, 2, "0", STR_PAD_LEFT);
+    die($error);
+
+}
+
 //Controleer of post is geset
 if($_SERVER["REQUEST_METHOD"] == "POST") {
     // Gebruikersnaam en wachtwoord uit post halen
     $username = $_POST['username'];
     $password = $_POST['password'];
+    if (!isset($_SESSION['mistakes'])) {
+        $_SESSION['mistakes'] = 0;
+    }
 
     $sql = "SELECT * FROM user WHERE username = ? AND password = ?";
     if ($sql){
@@ -32,11 +69,21 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['id'] = $user['id'];
         $_SESSION['username'] = $username;
         $_SESSION['user'] = $user;
+        unset($_SESSION['mistakes']);
 
         header("location: dashboard.php");
+        exit();
     } else {
-        // Gebruiker is niet ingelogd
-        $error = "Gebruikersnaam of wachtwoord is onjuist";
+
+        $_SESSION["mistakes"] += 1;
+
+        if($_SESSION['mistakes'] < 5) {
+            // Gebruiker is niet ingelogd
+            $error = "Gebruikersnaam of wachtwoord is onjuist";
+        } else {
+            $_SESSION["isBlocked"] = true;
+            $_SESSION["blockStartedAt"] = time();
+        }
     }
 
 }
