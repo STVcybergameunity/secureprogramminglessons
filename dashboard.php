@@ -19,7 +19,7 @@ function executeTransaction($ontvanger, $bedrag): void
     }
 
     if($bedrag <= 0) {
-        $error = "Vul een bedrag hoger dan 0 in";
+        $error = "Vul een bedrag hoger dan 0 in.";
         return;
     }
 
