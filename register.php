@@ -5,10 +5,11 @@ include 'includes/db.php';
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $username = htmlspecialchars($_POST['username'], ENT_QUOTES);
-    $password = htmlspecialchars($_POST['password'], ENT_QUOTES);
-    $passwordcheck = htmlspecialchars($_POST['passwordcheck'], ENT_QUOTES);
+    $password = $_POST['password'];
+    $passwordcheck = $_POST['passwordcheck'];
 
-    if ($password == $passwordcheck) {
+    if ($password === $passwordcheck) {
+        $password = password_hash($password, PASSWORD_DEFAULT);
         $stmt = $pdo->prepare("SELECT * FROM user WHERE username = ?");
         $stmt->execute([$username]);
         try {
