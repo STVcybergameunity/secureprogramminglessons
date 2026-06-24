@@ -23,10 +23,10 @@ er uit filteren.
 
 *Fout opgelost binnen user.php === is veranderd naar !==. Zie https://github.com/STVcybergameunity/secureprogramminglessons/commit/3de6ba3fd3eaad99f48cf69c8d97f16a7d0cefab
 
+*De wachtwoorden zijn nu gehashed volgens PASSWORD_DEFAULT. Zie https://github.com/STVcybergameunity/secureprogramminglessons/commit/d6f6774a955b84d1a70affe95fa1e610101dd398
+
 ## Nog te doen
 
-*Data validatie.
-
-*Cryptografie.
+Niks :D
 
 --------------------------------------
