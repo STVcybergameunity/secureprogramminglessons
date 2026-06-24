@@ -51,9 +51,16 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Select user by username only, then verify password with password_verify
     $sql = "SELECT * FROM user WHERE username = ?";
-    $result = $pdo->prepare($sql);
-    $result->execute([$username]);
-    $user = $result->fetch();
+
+    if ($sql){
+        $result = $pdo->prepare($sql);
+        $result->execute([$username]);
+        $user = $result->fetch();
+    }else {
+
+        echo "<script type='text/javascript'>alert('Error: SQL not found. Please retry');</script>";
+
+    }
 
     // Controleer of gebruiker bestaat en wachtwoord klopt
     if ($user && password_verify($password, $user['password'])) {
